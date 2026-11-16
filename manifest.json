@@ -1,0 +1,12 @@
+{
+  "name": "Agenda do Personal",
+  "short_name": "Agenda",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f6f8",
+  "theme_color": "#111827",
+  "icons": [
+    { "src": "icon.png", "sizes": "any", "type": "image/png", "purpose": "any" }
+  ]
+}

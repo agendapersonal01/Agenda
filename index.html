@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Agenda do Personal</title>
+<meta name="application-name" content="Agenda do Personal">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Agenda">
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#1d2330;--mut:#6b7280;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--blue:#2563eb;--line:#e5e7eb}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.4 system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+header{background:#111827;color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 12px;position:sticky;top:0;z-index:5}
+header h1{margin:0;font-size:18px}
+header .sub{font-size:13px;opacity:.75;margin-top:2px}
+main{padding:12px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:6}
+nav button{flex:1;padding:14px 1px;border:0;background:none;font-size:12px;color:var(--mut);font-family:inherit}
+nav button.on{color:var(--blue);font-weight:600}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.hora{font-size:20px;font-weight:700}
+.nome{font-size:16px;margin:4px 0 6px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.btns{display:flex;gap:8px;margin-top:10px}
+.btn{flex:1;padding:13px;border:0;border-radius:10px;font-size:15px;font-weight:600;color:#fff;background:var(--blue);text-align:center;font-family:inherit}
+.btn.ok{background:var(--ok)}
+.btn.warn{background:var(--warn)}
+.btn.bad{background:var(--bad)}
+.btn.sec{background:#e5e7eb;color:var(--ink)}
+.tag{display:inline-block;font-size:12px;padding:3px 9px;border-radius:999px;background:#e5e7eb;color:var(--ink);white-space:nowrap}
+.tag.ok{background:#dcfce7;color:#166534}
+.tag.warn{background:#fef3c7;color:#92400e}
+.tag.bad{background:#fee2e2;color:#991b1b}
+.tag.extra{background:#e0e7ff;color:#3730a3}
+input,select{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:10px;font-size:16px;margin:4px 0 12px;background:#fff;font-family:inherit}
+label{font-size:14px;color:var(--mut)}
+.days{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:4px 0 12px}
+.days label{display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid #d1d5db;border-radius:10px;padding:10px 4px;color:var(--ink);background:#fff;font-size:14px}
+.empty{color:var(--mut);text-align:center;padding:24px 0}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:flex-end;z-index:10}
+.sheet.open{display:flex}
+.sheet .box{background:#fff;width:100%;border-radius:16px 16px 0 0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
+.sec-title{font-size:13px;color:var(--mut);text-transform:uppercase;margin:12px 2px 8px}
+.small{font-size:13px;color:var(--mut)}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;z-index:20}
+.toast.show{opacity:1}
+.seg{display:flex;background:#e5e7eb;border-radius:10px;padding:3px;margin-bottom:10px}
+.seg button{flex:1;border:0;background:none;padding:8px;border-radius:8px;font-size:14px;color:var(--ink);font-family:inherit}
+.seg button.on{background:#fff;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.calbar,.paybar{display:flex;align-items:center;justify-content:space-between;margin:6px 0 10px;gap:8px}
+.calbar b,.paybar b{text-align:center;flex:1}
+.calbar button,.paybar button{border:0;background:#fff;border-radius:10px;width:40px;height:40px;font-size:20px;color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dh{text-align:center;font-size:12px;color:var(--mut);padding:4px 0}
+.day{background:#fff;border-radius:10px;min-height:52px;padding:4px 2px;font-size:14px;text-align:center}
+.day.out{opacity:.35}
+.day.feriado{background:#fee2e2;color:#b91c1c;font-weight:600}
+.day.hoje{outline:2px solid var(--blue)}
+.day em{display:block;font-style:normal;font-size:11px;background:var(--blue);color:#fff;border-radius:999px;margin:3px auto 0;width:22px;line-height:16px}
+.feriados-lista{font-size:13px;color:#b91c1c;margin:10px 2px}
+.mini{background:#fff;border-radius:12px;padding:8px;margin-bottom:10px}
+.mini .mt{font-weight:600;border:0;background:none;padding:0 0 6px;font-size:15px;color:var(--ink);font-family:inherit}
+.mini .grid{gap:2px}
+.mini .dh{font-size:10px;padding:0}
+.mini .day{min-height:0;padding:2px 0;font-size:11px;border-radius:6px}
+.mini .day em{width:6px;height:6px;line-height:6px;font-size:0;margin:2px auto 0}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:6px}
+.slot{padding:11px 2px;border:1px solid #d1d5db;border-radius:10px;background:#fff;font-size:15px;font-family:inherit;color:var(--ink)}
+.slot.sel{background:var(--blue);color:#fff;border-color:var(--blue)}
+.slot.busy{background:#f3f4f6;color:#9ca3af;text-decoration:line-through}
+.aluno-opt{display:block;width:100%;text-align:left;padding:14px;margin-bottom:8px;border:1px solid #d1d5db;border-radius:12px;background:#fff;font-size:16px;font-family:inherit;color:var(--ink)}
+.aluno-opt:active{background:#dbeafe}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.kpi{background:#fff;border-radius:12px;padding:10px 4px;text-align:center}
+.kpi span{display:block;font-size:11px;color:var(--mut)}
+.kpi b{font-size:13px}
+.rk .pos{font-size:18px;font-weight:700;width:38px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px;text-align:center;font-size:12px;color:var(--mut)}
+.stats span{display:block;font-size:20px;font-weight:700;color:var(--ink)}
+.pod-gold{background:linear-gradient(135deg,#fde68a,#f59e0b)}
+.pod-silver{background:linear-gradient(135deg,#f3f4f6,#9ca3af)}
+.pod-bronze{background:linear-gradient(135deg,#fed7aa,#b45309)}
+.pod-gold .stats,.pod-silver .stats,.pod-bronze .stats{color:#374151}
+.pod-gold .stats span,.pod-silver .stats span,.pod-bronze .stats span{color:#111827}
+</style>
+</head>
+<body>
+<header><h1>Agenda do Personal</h1><div class="sub" id="sub"></div></header>
+<main>
+  <section id="v-inicio"></section>
+  <section id="v-cal" hidden></section>
+  <section id="v-alunos" hidden></section>
+  <section id="v-repor" hidden></section>
+  <section id="v-fat" hidden></section>
+  <section id="v-rank" hidden></section>
+</main>
+<nav>
+  <button data-v="inicio" class="on">Início</button>
+  <button data-v="cal">Calendário</button>
+  <button data-v="alunos">Alunos</button>
+  <button data-v="repor">Reposições</button>
+  <button data-v="fat">Faturamento</button>
+  <button data-v="rank">Ranking</button>
+</nav>
+<div class="sheet" id="sheet"><div class="box" id="sheetBox"></div></div>
+<div class="toast" id="toast"></div>
+<input type="file" id="fileBackup" accept=".json,application/json" hidden>
+
+<script>
+/* ================= utilidades ================= */
+const $=s=>document.querySelector(s);
+const pad=n=>String(n).padStart(2,"0");
+const iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const hoje=()=>iso(new Date());
+const parseIso=s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d);};
+const CODIGO=["dom","seg","ter","qua","qui","sex","sab"];
+const diaCode=s=>CODIGO[parseIso(s).getDay()];
+const DIAS_NOME={seg:"Segunda",ter:"Terça",qua:"Quarta",qui:"Quinta",sex:"Sexta",sab:"Sábado",dom:"Domingo"};
+const ORDEM=["seg","ter","qua","qui","sex","sab","dom"];
+const MESES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const fmtData=s=>{const [y,m,d]=s.split("-");return d+"/"+m+"/"+y;};
+const fmtMes=ym=>{const [y,m]=ym.split("-");return m+"/"+y;};
+const mesNome=ym=>{const [y,m]=ym.split("-").map(Number);return MESES[m-1]+" de "+y;};
+const shiftMes=(ym,n)=>{const [y,m]=ym.split("-").map(Number);const d=new Date(y,m-1+n,1);return d.getFullYear()+"-"+pad(d.getMonth()+1);};
+const mesesEntre=(a,b)=>{const [y1,m1]=a.split("-").map(Number),[y2,m2]=b.split("-").map(Number);return (y2-y1)*12+(m2-m1);};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const moeda=v=>Number(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const byHora=(a,b)=>(a.horario||"").localeCompare(b.horario||"");
+const byNome=(a,b)=>(a.nome||"").localeCompare(b.nome||"");
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),1800);}
+function openSheet(html){$("#sheetBox").innerHTML=html;$("#sheet").classList.add("open");}
+function closeSheet(){$("#sheet").classList.remove("open");ui.diaAberto=null;}
+$("#sheet").addEventListener("click",e=>{if(e.target.id==="sheet")closeSheet();});
+function baixar(blob,nome){
+  const url=URL.createObjectURL(blob);const a=document.createElement("a");
+  a.href=url;a.download=nome;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},2000);
+  toast("Arquivo gerado ✓");
+}
+
+/* ================= dados (fica neste aparelho) ================= */
+const COLS=["alunos","registros","reposicoes","pagamentos","extras"];
+const KEY="agenda_app_v1";
+function carregar(){
+  const vazio={alunos:{},registros:{},reposicoes:{},pagamentos:{},extras:{}};
+  try{return Object.assign(vazio,JSON.parse(localStorage.getItem(KEY)||"{}"));}catch(e){return vazio;}
+}
+let D=carregar();
+function salvar(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch(e){toast("Não foi possível salvar neste aparelho");}}
+const list=c=>Object.keys(D[c]).map(id=>Object.assign({id},D[c][id]));
+function setDoc(c,id,dados){D[c][id]=dados;salvar();render();}
+function updDoc(c,id,patch){D[c][id]=Object.assign({},D[c][id],patch);salvar();render();}
+function delDoc(c,id){delete D[c][id];salvar();render();}
+
+/* ================= feriados nacionais ================= */
+const HOL={};
+function feriados(y){
+  const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),
+        h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),
+        mes=Math.floor((h+l-7*m+114)/31),dia=((h+l-7*m+114)%31)+1;
+  const pascoa=new Date(y,mes-1,dia);
+  const add=(dt,n)=>new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()+n);
+  const r={};const put=(dt,nome)=>{r[iso(dt)]=nome;};
+  put(new Date(y,0,1),"Confraternização Universal");
+  put(add(pascoa,-48),"Carnaval (ponto facultativo)");
+  put(add(pascoa,-47),"Carnaval (ponto facultativo)");
+  put(add(pascoa,-2),"Sexta-feira Santa");
+  put(new Date(y,3,21),"Tiradentes");
+  put(new Date(y,4,1),"Dia do Trabalho");
+  put(add(pascoa,60),"Corpus Christi (ponto facultativo)");
+  put(new Date(y,8,7),"Independência do Brasil");
+  put(new Date(y,9,12),"Nossa Senhora Aparecida");
+  put(new Date(y,10,2),"Finados");
+  put(new Date(y,10,15),"Proclamação da República");
+  put(new Date(y,10,20),"Dia da Consciência Negra");
+  put(new Date(y,11,25),"Natal");
+  return r;
+}
+function hol(dt){const y=dt.getFullYear();if(!HOL[y])HOL[y]=feriados(y);return HOL[y][iso(dt)]||null;}
+
+/* ================= planos e pagamentos ================= */
+const PLANOS={mensal:1,trimestral:3,anual:12};
+const planoNome=a=>a.plano||"mensal";
+// ciclo de cobrança que contém o mês ym (1, 3 ou 12 meses a partir do início do plano)
+function cicloDe(a,ym){
+  const n=PLANOS[a.plano||"mensal"]||1;
+  const anc=(a.inicio||hoje()).slice(0,7);
+  const k=Math.floor(mesesEntre(anc,ym)/n);
+  return {ini:shiftMes(anc,k*n),n,valor:Number(a.valor||0)*n};
+}
+function statusPag(a,ymRef){
+  const c=cicloDe(a,ymRef), ym=c.ini;
+  const p=D.pagamentos[a.id+"_"+ym];
+  const [y,m]=ym.split("-").map(Number);
+  const ultimo=new Date(y,m,0).getDate();
+  const venc=iso(new Date(y,m-1,Math.min(a.diaVencimento||1,ultimo)));
+  const base={ciclo:c,ym,valor:c.valor,venc};
+  if(p&&p.pago){
+    return Object.assign(base,p.dataPagamento<=venc?{k:"ok",t:"Pago em dia",pago:true,p}:{k:"warn",t:"Pago com atraso",pago:true,p});
+  }
+  if(hoje()>venc) return Object.assign(base,{k:"bad",t:"Atrasado",pago:false,p:null});
+  return Object.assign(base,{k:"",t:"Em aberto",pago:false,p:null});
+}
+
+/* ================= aulas do dia ================= */
+function occ(d){
+  const dc=diaCode(d), out=[];
+  for(const a of list("alunos")){
+    if(a.ativo===false||!(a.dias||[]).includes(dc)) continue;
+    const regId=d+"_"+a.id;
+    out.push({tipo:"fixa",alunoId:a.id,nome:a.nome,horario:a.horario||"",regId,reg:D.registros[regId]||null});
+  }
+  for(const r of list("reposicoes")){
+    if(r.dataNova!==d) continue;
+    out.push({tipo:"reposicao",repId:r.id,alunoId:r.alunoId,nome:r.nome,horario:r.horarioNova||"",status:r.status,dataOriginal:r.dataOriginal,horarioOriginal:r.horarioOriginal});
+  }
+  for(const e of list("extras")){
+    if(e.data!==d) continue;
+    out.push({tipo:"extra",extraId:e.id,alunoId:e.alunoId,nome:e.nome,horario:e.horario||"",status:e.status});
+  }
+  return out.sort(byHora);
+}
+function statusTxt(x){
+  if(x.tipo==="reposicao") return x.status==="concluida"?"Reposição concluída":"Reposição agendada";
+  if(x.tipo==="extra") return x.status==="concluida"?"Concluída":"Agendada";
+  const st=x.reg&&x.reg.status;
+  return st==="concluida"?"Concluída":st==="reposta"?"Vai repor":st==="nao_feita"?"Não feita":"Pendente";
+}
+function registrar(dia,alunoId,status){
+  const a=D.alunos[alunoId]; if(!a) return;
+  setDoc("registros",dia+"_"+alunoId,{data:dia,alunoId,nome:a.nome,horario:a.horario,status});
+}
+function cardAula(x,d){
+  if(x.tipo==="reposicao"){
+    return '<div class="card"><div class="row"><span class="hora">'+esc(x.horario)+'</span><span class="tag warn">Reposição</span></div><div class="nome">'+esc(x.nome)+'</div><div class="small">Reposição de '+fmtData(x.dataOriginal)+' às '+esc(x.horarioOriginal)+'</div>'+
+      (x.status==="concluida"?'<div style="margin-top:8px"><span class="tag ok">Concluída</span></div>':'<div class="btns"><button class="btn ok" data-act="concl-rep" data-id="'+x.repId+'">✓ Concluiu</button></div>')+'</div>';
+  }
+  if(x.tipo==="extra"){
+    return '<div class="card"><div class="row"><span class="hora">'+esc(x.horario)+'</span><span class="tag extra">Aula extra</span></div><div class="nome">'+esc(x.nome)+'</div>'+
+      (x.status==="concluida"?'<div style="margin-top:8px"><span class="tag ok">Concluída</span></div>':'<div class="btns"><button class="btn ok" data-act="concl-extra" data-id="'+x.extraId+'">✓ Concluiu</button><button class="btn sec" data-act="del-extra" data-id="'+x.extraId+'">Remover</button></div>')+'</div>';
+  }
+  const st=x.reg&&x.reg.status;
+  const tag=st==="concluida"?'<span class="tag ok">Concluída</span>':st==="reposta"?'<span class="tag warn">Vai repor</span>':st==="nao_feita"?'<span class="tag bad">Não feita</span>':'<span class="tag">Aula fixa</span>';
+  const botoes=st?'<div class="btns"><button class="btn sec" data-act="desfazer" data-id="'+x.regId+'">Desfazer</button></div>':
+    '<div class="btns"><button class="btn ok" data-act="concluir" data-id="'+x.alunoId+'" data-dia="'+d+'">✓ Concluiu</button><button class="btn warn" data-act="repor" data-id="'+x.alunoId+'" data-dia="'+d+'">↻ Repor</button><button class="btn bad" data-act="nao-feito" data-id="'+x.alunoId+'" data-dia="'+d+'">✕ Não feito</button></div>';
+  return '<div class="card"><div class="row"><span class="hora">'+esc(x.horario)+'</span>'+tag+'</div><div class="nome">'+esc(x.nome)+'</div>'+botoes+'</div>';
+}
+
+/* ================= Início ================= */
+const ui={cv:"mes",cursor:new Date(),payMes:hoje().slice(0,7),fatMes:hoje().slice(0,7),repTipo:"mensal",repRef:hoje().slice(0,7),rankTipo:"mensal",rankRef:hoje().slice(0,7),addDia:null,addHora:null,diaAberto:null};
+function renderInicio(){
+  const t=hoje(), aulas=occ(t), ym=ui.payMes, ativos=list("alunos").filter(a=>a.ativo!==false).sort(byNome);
+  const atrasados=ativos.filter(a=>statusPag(a,ym).k==="bad");
+  $("#sub").textContent=DIAS_NOME[diaCode(t)]+", "+fmtData(t)+" · "+aulas.length+" aula(s) hoje";
+  let h='<div class="sec-title">Aulas de hoje</div>';
+  if(!aulas.length) h+='<div class="empty">Nenhuma aula hoje.</div>';
+  aulas.forEach(x=>h+=cardAula(x,t));
+  h+='<button class="btn" data-act="abrir-add" data-dia="'+t+'" style="width:100%;margin:6px 0 4px">+ Adicionar aula hoje</button>';
+  h+='<div class="sec-title">Pagamentos</div>';
+  h+='<div class="paybar"><button data-pay="-1">‹</button><b>'+mesNome(ym)+'</b><button data-pay="1">›</button></div>';
+  if(atrasados.length) h+='<div class="card" style="border-left:4px solid var(--bad)"><b>'+atrasados.length+' atrasado(s):</b> '+atrasados.map(a=>esc(a.nome)).join(", ")+'</div>';
+  if(!ativos.length) h+='<div class="empty">Cadastre alunos para ver os pagamentos.</div>';
+  for(const a of ativos){
+    const s=statusPag(a,ym);
+    h+='<div class="card"><div class="row"><b>'+esc(a.nome)+'</b><span class="tag '+s.k+'">'+s.t+'</span></div>'+
+      '<div class="small" style="margin-top:4px">'+planoNome(a)+' · ciclo de '+mesNome(s.ciclo.ini)+' · R$ '+moeda(s.valor)+' · vence '+fmtData(s.venc)+(s.p&&s.p.dataPagamento?' · pago em '+fmtData(s.p.dataPagamento):'')+'</div>'+
+      '<div class="btns">'+(s.pago?'<button class="btn sec" data-act="desmarcar-pag" data-id="'+a.id+'">Desmarcar pagamento</button>':'<button class="btn ok" data-act="marcar-pag" data-id="'+a.id+'">Marcar como pago</button>')+'</div></div>';
+  }
+  $("#v-inicio").innerHTML=h;
+}
+
+/* ================= Calendário ================= */
+function gradeMes(y,m,compacto){
+  const ini=new Date(y,m,1-new Date(y,m,1).getDay());
+  let g='<div class="grid">'+"DSTQQSS".split("").map(x=>'<div class="dh">'+x+'</div>').join("");
+  for(let i=0;i<42;i++){
+    const d=new Date(ini.getFullYear(),ini.getMonth(),ini.getDate()+i), s=iso(d), f=hol(d), out=d.getMonth()!==m;
+    if(compacto&&out){g+='<div></div>';continue;}
+    const n=occ(s).length;
+    g+='<div class="day'+(out?' out':'')+(f?' feriado':'')+(s===hoje()?' hoje':'')+'" data-day="'+s+'" title="'+esc(f||'')+'">'+d.getDate()+(n?(compacto?'<em></em>':'<em>'+n+'</em>'):'')+'</div>';
+  }
+  return g+'</div>';
+}
+function renderCal(){
+  const c=ui.cursor, y=c.getFullYear(), m=c.getMonth();
+  const seg='<div class="seg">'+[["mes","Mês"],["semana","Semana"],["ano","Ano"]].map(p=>'<button data-cv="'+p[0]+'" class="'+(ui.cv===p[0]?'on':'')+'">'+p[1]+'</button>').join("")+'</div>';
+  let titulo="", corpo="";
+  if(ui.cv==="mes"){
+    titulo=MESES[m]+" "+y;
+    const fs=[];
+    for(let d=1;d<=new Date(y,m+1,0).getDate();d++){const f=hol(new Date(y,m,d));if(f)fs.push(pad(d)+"/"+pad(m+1)+" "+f);}
+    corpo=gradeMes(y,m,false)+(fs.length?'<div class="feriados-lista">Feriados: '+fs.map(esc).join(" · ")+'</div>':'');
+  } else if(ui.cv==="semana"){
+    const ini=new Date(y,m,c.getDate()-c.getDay());
+    const fim=new Date(ini.getFullYear(),ini.getMonth(),ini.getDate()+6);
+    titulo=fmtData(iso(ini)).slice(0,5)+" a "+fmtData(iso(fim));
+    for(let i=0;i<7;i++){
+      const d=new Date(ini.getFullYear(),ini.getMonth(),ini.getDate()+i), s=iso(d), f=hol(d), lista=occ(s);
+      corpo+='<div class="card" data-day="'+s+'"'+(f?' style="border-left:4px solid var(--bad)"':'')+'><div class="row"><b>'+DIAS_NOME[diaCode(s)]+', '+fmtData(s)+'</b>'+(f?'<span class="tag bad">'+esc(f)+'</span>':'')+'</div>'+
+        (lista.length?lista.map(x=>'<div class="small" style="margin-top:6px;color:var(--ink)"><b>'+esc(x.horario)+'</b> '+esc(x.nome)+(x.tipo==="reposicao"?' (reposição)':'')+' · '+statusTxt(x)+'</div>').join(""):'<div class="small">Sem aulas</div>')+'</div>';
+    }
+  } else {
+    titulo=String(y);
+    corpo=MESES.map((nm,mo)=>'<div class="mini"><button class="mt" data-goto="'+y+'-'+mo+'">'+nm+'</button>'+gradeMes(y,mo,true)+'</div>').join("");
+  }
+  $("#v-cal").innerHTML=seg+'<div class="calbar"><button data-nav="-1">‹</button><b>'+titulo+'</b><button data-nav="1">›</button></div>'+corpo;
+}
+function navegar(n){
+  const c=ui.cursor;
+  if(ui.cv==="mes") ui.cursor=new Date(c.getFullYear(),c.getMonth()+n,1);
+  else if(ui.cv==="semana") ui.cursor=new Date(c.getFullYear(),c.getMonth(),c.getDate()+7*n);
+  else ui.cursor=new Date(c.getFullYear()+n,c.getMonth(),1);
+  renderCal();
+}
+function openDia(s){
+  ui.diaAberto=s;
+  const f=hol(parseIso(s)), lista=occ(s);
+  openSheet('<h3 style="margin:0 0 6px">'+DIAS_NOME[diaCode(s)]+', '+fmtData(s)+'</h3>'+(f?'<div class="tag bad" style="margin-bottom:10px">'+esc(f)+'</div>':'')+
+    (lista.length?lista.map(x=>cardAula(x,s)).join(""):'<div class="empty">Sem aulas neste dia.</div>')+
+    '<button class="btn" data-act="abrir-add" data-dia="'+s+'" style="width:100%;margin-top:10px">+ Adicionar aula neste dia</button>');
+}
+
+/* ================= Adicionar aula ================= */
+const SLOTS=[];
+for(let mi=5*60;mi<=21*60+30;mi+=30) SLOTS.push(pad(Math.floor(mi/60))+":"+pad(mi%60));
+function ocupacao(d){
+  const mapa={};
+  for(const x of occ(d)){
+    if(x.tipo==="fixa"&&x.reg&&x.reg.status==="reposta") continue;
+    if(!mapa[x.horario]) mapa[x.horario]=x.nome;
+  }
+  return mapa;
+}
+function openAdicionar(dia){
+  ui.diaAberto=null; ui.addDia=dia; ui.addHora=null;
+  const mapa=ocupacao(dia), dh=occ(dia);
+  const alunos=list("alunos").filter(a=>a.ativo!==false).sort(byNome);
+  openSheet('<h3 style="margin:0 0 4px">Adicionar aula</h3><div class="small">'+DIAS_NOME[diaCode(dia)]+', '+fmtData(dia)+'</div>'+
+    '<div class="sec-title">1. Escolha um horário livre</div><div class="slots">'+
+    SLOTS.map(h=>mapa[h]?'<button class="slot busy" disabled title="'+esc(mapa[h])+'">'+h+'</button>':'<button class="slot" data-slot="'+h+'">'+h+'</button>').join("")+
+    '</div><div class="sec-title">2. Toque no aluno</div><div class="small" id="addHora" style="margin-bottom:8px">Nenhum horário escolhido</div>'+
+    (alunos.length?alunos.map(a=>'<button class="aluno-opt" data-act="add-aula" data-id="'+a.id+'">'+esc(a.nome)+(dh.some(x=>x.alunoId===a.id)?' <span class="small">· já tem aula neste dia</span>':'')+'</button>').join(""):'<div class="empty">Cadastre alunos primeiro.</div>'));
+}
+
+/* ================= Reposições ================= */
+function renderRepor(){
+  const t=hoje();
+  const lista=list("reposicoes").filter(r=>r.status!=="concluida"&&(r.dataNova||"")>=t).sort((a,b)=>((a.dataNova||"")+(a.horarioNova||"")).localeCompare((b.dataNova||"")+(b.horarioNova||"")));
+  let h='<div class="sec-title">Reposições agendadas</div>';
+  if(!lista.length) h+='<div class="empty">Nenhuma reposição agendada.</div>';
+  for(const r of lista){
+    h+='<div class="card"><div class="row"><span class="hora">'+fmtData(r.dataNova)+' · '+esc(r.horarioNova)+'</span></div><div class="nome">'+esc(r.nome)+'</div><div class="small">Reposição de '+fmtData(r.dataOriginal)+' às '+esc(r.horarioOriginal)+(r.obs?' · '+esc(r.obs):'')+'</div><div class="btns"><button class="btn ok" data-act="concl-rep" data-id="'+r.id+'">✓ Concluiu</button><button class="btn sec" data-act="cancel-rep" data-id="'+r.id+'">Cancelar</button></div></div>';
+  }
+  $("#v-repor").innerHTML=h;
+}
+function openRepor(alunoId,dia){
+  const a=D.alunos[alunoId]; if(!a) return;
+  ui.diaAberto=null;
+  openSheet('<h3 style="margin:0 0 4px">Repor aula</h3><div class="small">'+esc(a.nome)+' · aula de '+fmtData(dia)+' às '+esc(a.horario)+'</div>'+
+  '<form id="fRepor" data-aluno="'+alunoId+'" data-dia="'+dia+'" style="margin-top:12px"><label>Data da reposição</label><input type="date" name="data" required value="'+hoje()+'"><label>Horário</label><input type="time" name="hora" required value="'+esc(a.horario)+'"><label>Observação</label><input name="obs" placeholder="opcional"><button class="btn" type="submit" style="width:100%">Agendar reposição</button></form>');
+}
+function salvarRepor(alunoId,fd,dia){
+  const a=D.alunos[alunoId]; if(!a) return;
+  const rid="rep_"+Date.now();
+  setDoc("reposicoes",rid,{nome:a.nome,alunoId,dataOriginal:dia,horarioOriginal:a.horario,dataNova:fd.get("data"),horarioNova:fd.get("hora"),obs:fd.get("obs")||"",status:"agendada"});
+  setDoc("registros",dia+"_"+alunoId,{data:dia,alunoId,nome:a.nome,horario:a.horario,status:"reposta",reposicaoId:rid});
+  closeSheet(); toast("Reposição agendada");
+}
+
+/* ================= Alunos ================= */
+function renderAlunos(){
+  let h='<button class="btn" data-act="novo-aluno" style="width:100%;margin-bottom:8px">+ Cadastrar aluno</button>'+
+    '<div class="btns" style="margin-bottom:12px"><button class="btn sec" data-act="exportar">Salvar backup</button><button class="btn sec" data-act="importar">Restaurar backup</button></div>';
+  const ym=hoje().slice(0,7), lista=list("alunos").sort(byNome);
+  if(!lista.length) h+='<div class="empty">Nenhum aluno cadastrado.</div>';
+  for(const a of lista){
+    const dias=(a.dias||[]).map(d=>DIAS_NOME[d]).join(", ")||"sem dias";
+    const s=statusPag(a,ym);
+    h+='<div class="card" data-act="edit-aluno" data-id="'+a.id+'"><div class="row"><b>'+esc(a.nome)+'</b><span class="tag '+(a.ativo===false?'':'ok')+'">'+(a.ativo===false?'Inativo':'Ativo')+'</span></div>'+
+      '<div class="small" style="margin-top:4px">'+esc(dias)+' · '+esc(a.horario)+'</div>'+
+      '<div class="small">'+planoNome(a)+' · R$ '+moeda(a.valor)+'/mês · <span class="tag '+s.k+'">'+s.t+'</span></div></div>';
+  }
+  $("#v-alunos").innerHTML=h;
+}
+function openAluno(id){
+  const a=id?Object.assign({id},D.alunos[id]):{nome:"",dias:[],horario:"09:00",ativo:true,valor:"",diaVencimento:"",plano:"mensal",inicio:hoje()};
+  ui.diaAberto=null;
+  openSheet('<h3 style="margin:0 0 8px">'+(id?'Editar aluno':'Novo aluno')+'</h3><form id="fAluno" data-id="'+(id||"")+'">'+
+  '<label>Nome</label><input name="nome" required value="'+esc(a.nome)+'">'+
+  '<label>Dias da semana</label><div class="days">'+ORDEM.map(d=>'<label><input type="checkbox" name="dias" value="'+d+'" '+((a.dias||[]).includes(d)?'checked':'')+' style="width:auto;margin:0">'+DIAS_NOME[d].slice(0,3)+'</label>').join("")+'</div>'+
+  '<label>Horário</label><input type="time" name="horario" required value="'+esc(a.horario)+'">'+
+  '<label>Plano de pagamento</label><select name="plano">'+["mensal","trimestral","anual"].map(p=>'<option value="'+p+'" '+((a.plano||"mensal")===p?'selected':'')+'>'+p.charAt(0).toUpperCase()+p.slice(1)+'</option>').join("")+'</select>'+
+  '<label>Início do plano</label><input type="date" name="inicio" value="'+esc(a.inicio||hoje())+'">'+
+  '<label>Valor mensal (R$)</label><input name="valor" type="number" step="0.01" min="0" inputmode="decimal" value="'+esc(a.valor)+'">'+
+  '<label>Dia de vencimento</label><input name="venc" type="number" min="1" max="31" value="'+esc(a.diaVencimento)+'">'+
+  '<label style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><input type="checkbox" name="ativo" '+(a.ativo!==false?'checked':'')+' style="width:auto;margin:0"> Aluno ativo</label>'+
+  '<div class="btns"><button class="btn" type="submit">Salvar</button>'+(id?'<button class="btn sec" type="button" data-act="excluir-aluno" data-id="'+id+'">Excluir</button>':'')+'</div></form>');
+}
+function salvarAluno(id,fd){
+  const aid=id||("al_"+Date.now());
+  setDoc("alunos",aid,{
+    nome:(fd.get("nome")||"").trim(),
+    dias:fd.getAll("dias"),
+    horario:fd.get("horario"),
+    plano:fd.get("plano")||"mensal",
+    inicio:fd.get("inicio")||hoje(),
+    valor:Number(fd.get("valor")||0),
+    diaVencimento:Math.min(31,Math.max(1,Number(fd.get("venc")||1))),
+    ativo:fd.get("ativo")==="on"
+  });
+  closeSheet(); toast("Aluno salvo");
+}
+function exportarBackup(){
+  const out={versao:3,gerado:new Date().toISOString(),dados:{}};
+  for(const c of COLS) out.dados[c]=list(c);
+  baixar(new Blob([JSON.stringify(out,null,2)],{type:"application/json"}),"backup-agenda-"+hoje()+".json");
+}
+
+/* ================= Faturamento ================= */
+function renderFat(){
+  const ym=ui.fatMes, ativos=list("alunos").filter(a=>a.ativo!==false);
+  const recebidos=list("pagamentos").filter(p=>p.pago&&(p.dataPagamento||"").startsWith(ym)).sort((a,b)=>(a.dataPagamento||"").localeCompare(b.dataPagamento||""));
+  const totalRec=recebidos.reduce((s,p)=>s+Number(p.valor||0),0);
+  const previstos=ativos.map(a=>({a,s:statusPag(a,ym)})).filter(x=>x.s.ciclo.ini===ym);
+  const totalPrev=previstos.reduce((s,x)=>s+x.s.valor,0);
+  const pendentes=previstos.filter(x=>!x.s.pago);
+  const totalPend=pendentes.reduce((s,x)=>s+x.s.valor,0);
+  let h='<div class="paybar"><button data-fat="-1">‹</button><b>'+mesNome(ym)+'</b><button data-fat="1">›</button></div>';
+  h+='<button class="btn" data-act="abrir-rel" style="width:100%;margin-bottom:12px">Extrair relatório (PDF)</button>';
+  h+='<div class="kpis"><div class="kpi"><span>Recebido</span><b>R$ '+moeda(totalRec)+'</b></div><div class="kpi"><span>Previsto</span><b>R$ '+moeda(totalPrev)+'</b></div><div class="kpi"><span>Pendente</span><b>R$ '+moeda(totalPend)+'</b></div></div>';
+  h+='<div class="sec-title">Entradas do mês</div>';
+  if(!recebidos.length) h+='<div class="empty">Nenhum pagamento recebido neste mês.</div>';
+  for(const p of recebidos) h+='<div class="card"><div class="row"><b>'+esc(p.nome)+'</b><b>R$ '+moeda(p.valor)+'</b></div><div class="small">Recebido em '+fmtData(p.dataPagamento)+' · referente a '+mesNome(p.mes||ym)+'</div></div>';
+  h+='<div class="sec-title">Pendentes</div>';
+  if(!pendentes.length) h+='<div class="empty">Tudo recebido neste mês.</div>';
+  for(const x of pendentes) h+='<div class="card"><div class="row"><b>'+esc(x.a.nome)+'</b><span class="tag '+x.s.k+'">'+x.s.t+'</span></div><div class="small">R$ '+moeda(x.s.valor)+' · vence '+fmtData(x.s.venc)+' · '+planoNome(x.a)+'</div></div>';
+  $("#v-fat").innerHTML=h;
+}
+
+/* ================= Relatório em PDF ================= */
+function periodoMeses(tipo,ref){
+  if(tipo==="mensal") return [ref];
+  if(tipo==="anual"){const y=ref.slice(0,4);return Array.from({length:12},(_,i)=>y+"-"+pad(i+1));}
+  const datas=[hoje().slice(0,7),...list("alunos").map(a=>(a.inicio||hoje()).slice(0,7)),...list("pagamentos").map(p=>(p.dataPagamento||p.mes||hoje()).slice(0,7))].sort();
+  const fim=hoje().slice(0,7), out=[];
+  for(let m=datas[0];m<=fim;m=shiftMes(m,1)) out.push(m);
+  return out;
+}
+function estatAulas(meses){
+  const ag={}, agora=hoje();
+  for(const m of meses){
+    const [y,mo]=m.split("-").map(Number), ultimo=new Date(y,mo,0).getDate();
+    for(let i=1;i<=ultimo;i++){
+      const d=m+"-"+pad(i);
+      for(const x of occ(d)){
+        const r=ag[x.alunoId]||(ag[x.alunoId]={alunoId:x.alunoId,nome:x.nome,prev:0,concl:0,repos:0,falt:0,pend:0});
+        const concl=x.tipo==="fixa"?!!(x.reg&&x.reg.status==="concluida"):x.status==="concluida";
+        const resolvida=x.tipo==="fixa"&&!!(x.reg&&(x.reg.status==="reposta"||x.reg.status==="nao_feita"));
+        r.prev++;
+        if(concl) r.concl++;
+        if(x.tipo==="reposicao"&&x.status==="concluida") r.repos++;
+        if(x.tipo==="fixa"&&x.reg&&x.reg.status==="nao_feita") r.falt++;
+        if(!concl&&!resolvida&&d<agora) r.pend++;
+      }
+    }
+  }
+  return Object.values(ag).sort(byNome);
+}
+function openRelatorio(){
+  ui.diaAberto=null;
+  const tipos=[["mensal","Mensal"],["anual","Anual"],["total","Total"]];
+  const ajuda={mensal:"Um mês escolhido",anual:"De janeiro a dezembro do ano escolhido",total:"Todo o histórico, do primeiro início de plano até hoje"};
+  openSheet('<h3 style="margin:0 0 8px">Extrair relatório</h3><div class="seg">'+tipos.map(t=>'<button data-rep="'+t[0]+'" class="'+(ui.repTipo===t[0]?'on':'')+'">'+t[1]+'</button>').join("")+'</div>'+
+    '<label>Mês de referência (ou o ano dele)</label><input type="month" id="repRef" value="'+ui.repRef+'">'+
+    '<div class="small" style="margin-bottom:12px">'+ajuda[ui.repTipo]+'</div>'+
+    '<button class="btn" data-act="gerar-pdf" style="width:100%">Gerar PDF</button>');
+}
+function gerarRelatorio(){
+  const r=$("#repRef"); if(r&&r.value) ui.repRef=r.value;
+  const tipo=ui.repTipo, ref=ui.repRef;
+  if(!window.jspdf||!window.jspdf.jsPDF){ toast("PDF indisponível: confira a conexão"); return; }
+  const meses=periodoMeses(tipo,ref), set=new Set(meses);
+  const titulo=tipo==="mensal"?"Relatório mensal: "+mesNome(ref):tipo==="anual"?"Relatório anual: "+ref.slice(0,4):"Relatório total";
+  const recs=list("pagamentos").filter(p=>p.pago&&set.has((p.dataPagamento||"").slice(0,7))).sort((a,b)=>(a.dataPagamento||"").localeCompare(b.dataPagamento||""));
+  const prev=[];
+  for(const a of list("alunos")) for(const m of meses){ const s=statusPag(a,m); if(s.ciclo.ini===m) prev.push({a,s}); }
+  const totRec=recs.reduce((t,p)=>t+Number(p.valor||0),0);
+  const totPrev=prev.reduce((t,x)=>t+x.s.valor,0);
+  const totPend=prev.filter(x=>!x.s.pago).reduce((t,x)=>t+x.s.valor,0);
+  const aulas=estatAulas(meses);
+  const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:"mm",format:"a4"});
+  doc.setFontSize(15); doc.text("Agenda do Personal",14,16);
+  doc.setFontSize(11); doc.text(titulo,14,23);
+  doc.setFontSize(9); doc.text("Gerado em "+fmtData(hoje()),14,29);
+  doc.autoTable({startY:34,head:[["Resumo financeiro","Valor (R$)"]],body:[["Recebido",moeda(totRec)],["Previsto",moeda(totPrev)],["Pendente",moeda(totPend)]],theme:"grid",styles:{fontSize:10}});
+  doc.autoTable({startY:doc.lastAutoTable.finalY+8,head:[["Aluno","Plano","Ciclo","Valor (R$)","Vencimento","Situação","Pago em"]],
+    body:prev.length?prev.map(x=>[x.a.nome,planoNome(x.a),fmtMes(x.s.ciclo.ini),moeda(x.s.valor),fmtData(x.s.venc),x.s.t,x.s.p&&x.s.p.dataPagamento?fmtData(x.s.p.dataPagamento):"-"]):[["Nenhuma cobrança no período","","","","","",""]],theme:"striped",styles:{fontSize:9}});
+  doc.autoTable({startY:doc.lastAutoTable.finalY+8,head:[["Data","Aluno","Referente a","Valor (R$)"]],
+    body:recs.length?recs.map(p=>[fmtData(p.dataPagamento),p.nome,mesNome(p.mes||""),moeda(p.valor)]):[["Nenhum recebimento no período","","",""]],theme:"striped",styles:{fontSize:9}});
+  doc.autoTable({startY:doc.lastAutoTable.finalY+8,head:[["Aluno","Aulas previstas","Concluídas","Reposições","Faltas","Pendentes (passadas)"]],
+    body:aulas.length?aulas.map(x=>[x.nome,x.prev,x.concl,x.repos,x.falt,x.pend]):[["Nenhuma aula no período","","","","",""]],theme:"striped",styles:{fontSize:9}});
+  baixar(doc.output("blob"),"relatorio-"+tipo+"-"+ref+".pdf");
+}
+
+/* ================= Ranking ================= */
+function renderRank(){
+  if($("#v-rank").hidden) return;
+  const meses=periodoMeses(ui.rankTipo,ui.rankRef);
+  const st=estatAulas(meses);
+  const lista=list("alunos").map(a=>st.find(x=>x.alunoId===a.id)||{alunoId:a.id,nome:a.nome,prev:0,concl:0,repos:0,falt:0,pend:0})
+    .sort((a,b)=>(b.concl-a.concl)||(a.falt-b.falt)||a.nome.localeCompare(b.nome));
+  const medalhas=[["🏆 Campeão","gold"],["🥈 2º lugar","silver"],["🥉 3º lugar","bronze"]];
+  let h='<div class="seg">'+[["mensal","Mensal"],["anual","Anual"],["total","Total"]].map(t=>'<button data-rk="'+t[0]+'" class="'+(ui.rankTipo===t[0]?'on':'')+'">'+t[1]+'</button>').join("")+'</div>';
+  h+='<div class="calbar"><input type="month" id="rankRef" value="'+ui.rankRef+'" style="margin:0"></div>';
+  if(!lista.length) h+='<div class="empty">Cadastre alunos para ver o ranking.</div>';
+  lista.forEach((x,i)=>{
+    const med=i<3&&x.concl>0?medalhas[i]:null;
+    h+='<div class="card rk'+(med?' pod pod-'+med[1]:'')+'"><div class="row"><span class="pos">'+(i+1)+'º</span><b style="flex:1">'+esc(x.nome)+'</b>'+(med?'<span class="tag">'+med[0]+'</span>':'')+'</div>'+
+      '<div class="stats"><div><span>'+x.concl+'</span>aulas feitas</div><div><span>'+x.falt+'</span>faltas</div><div><span>'+x.repos+'</span>reposições</div></div></div>';
+  });
+  $("#v-rank").innerHTML=h;
+}
+
+/* ================= renderização geral ================= */
+function render(){renderInicio();renderCal();renderAlunos();renderRepor();renderFat();renderRank();}
+
+/* ================= ações ================= */
+function acao(act,id,dia){
+  try{
+    if(act==="concluir"){ registrar(dia,id,"concluida"); toast("Aula registrada ✓"); }
+    else if(act==="nao-feito"){ registrar(dia,id,"nao_feita"); toast("Marcada como não feita"); }
+    else if(act==="desfazer"){
+      const reg=D.registros[id];
+      if(reg&&reg.reposicaoId) delete D.reposicoes[reg.reposicaoId];
+      delete D.registros[id]; salvar(); render(); toast("Desfeito");
+    }
+    else if(act==="repor") openRepor(id,dia);
+    else if(act==="concl-rep"){ updDoc("reposicoes",id,{status:"concluida"}); toast("Reposição concluída ✓"); }
+    else if(act==="cancel-rep"){
+      const k=Object.keys(D.registros).find(k=>D.registros[k].reposicaoId===id);
+      if(k) delete D.registros[k];
+      delete D.reposicoes[id]; salvar(); render(); toast("Reposição cancelada");
+    }
+    else if(act==="marcar-pag"||act==="desmarcar-pag"){
+      const a=D.alunos[id]; const c=cicloDe(Object.assign({id},a),ui.payMes); const key=id+"_"+c.ini;
+      if(act==="marcar-pag"){ setDoc("pagamentos",key,{alunoId:id,nome:a.nome,mes:c.ini,valor:c.valor,pago:true,dataPagamento:hoje()}); toast("Pagamento registrado ✓"); }
+      else { delDoc("pagamentos",key); toast("Pagamento desmarcado"); }
+    }
+    else if(act==="abrir-add") openAdicionar(dia);
+    else if(act==="add-aula"){
+      if(!ui.addHora){ toast("Escolha um horário livre primeiro"); return; }
+      const d=ui.addDia, hora=ui.addHora;
+      if(ocupacao(d)[hora]){ toast("Esse horário já está ocupado"); return; }
+      const a=D.alunos[id];
+      setDoc("extras","ex_"+Date.now(),{data:d,horario:hora,alunoId:id,nome:a.nome,status:"agendada"});
+      closeSheet(); toast("Aula adicionada ✓");
+    }
+    else if(act==="concl-extra"){ updDoc("extras",id,{status:"concluida"}); toast("Aula concluída ✓"); }
+    else if(act==="del-extra"){ delDoc("extras",id); toast("Aula removida"); }
+    else if(act==="novo-aluno") openAluno();
+    else if(act==="edit-aluno") openAluno(id);
+    else if(act==="excluir-aluno"){ delDoc("alunos",id); closeSheet(); toast("Aluno excluído"); }
+    else if(act==="exportar") exportarBackup();
+    else if(act==="importar") $("#fileBackup").click();
+    else if(act==="abrir-rel") openRelatorio();
+    else if(act==="gerar-pdf") gerarRelatorio();
+
+    // mantém o dia aberto atualizado depois de uma ação
+    if(ui.diaAberto && $("#sheet").classList.contains("open") && ["concluir","nao-feito","desfazer","concl-rep","cancel-rep","concl-extra","del-extra"].includes(act)) openDia(ui.diaAberto);
+  }catch(err){ toast("Erro ao salvar"); }
+}
+
+/* ================= eventos ================= */
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
+  ["inicio","cal","alunos","repor","fat","rank"].forEach(v=>$("#v-"+v).hidden=(v!==b.dataset.v));
+  render();
+});
+document.addEventListener("click",e=>{
+  const t=e.target;
+  const dayEl=t.closest("[data-day]"); if(dayEl){openDia(dayEl.dataset.day);return;}
+  const navEl=t.closest("[data-nav]"); if(navEl){navegar(Number(navEl.dataset.nav));return;}
+  const cvEl=t.closest("[data-cv]"); if(cvEl){ui.cv=cvEl.dataset.cv;renderCal();return;}
+  const gEl=t.closest("[data-goto]"); if(gEl){const [y,mo]=gEl.dataset.goto.split("-").map(Number);ui.cursor=new Date(y,mo,1);ui.cv="mes";renderCal();return;}
+  const payEl=t.closest("[data-pay]"); if(payEl){ui.payMes=shiftMes(ui.payMes,Number(payEl.dataset.pay));renderInicio();return;}
+  const fatEl=t.closest("[data-fat]"); if(fatEl){ui.fatMes=shiftMes(ui.fatMes,Number(fatEl.dataset.fat));renderFat();return;}
+  const repEl=t.closest("[data-rep]"); if(repEl){const r=$("#repRef"); if(r&&r.value) ui.repRef=r.value; ui.repTipo=repEl.dataset.rep; openRelatorio(); return;}
+  const rkEl=t.closest("[data-rk]"); if(rkEl){ui.rankTipo=rkEl.dataset.rk; renderRank(); return;}
+  const slotEl=t.closest("[data-slot]");
+  if(slotEl){ ui.addHora=slotEl.dataset.slot; document.querySelectorAll(".slot").forEach(b=>b.classList.toggle("sel",b===slotEl)); const info=$("#addHora"); if(info) info.textContent="Horário escolhido: "+ui.addHora; return; }
+  const el=t.closest("[data-act]"); if(!el) return;
+  acao(el.dataset.act, el.dataset.id, el.dataset.dia);
+});
+document.addEventListener("submit",e=>{
+  e.preventDefault();
+  const f=e.target, fd=new FormData(f);
+  try{
+    if(f.id==="fRepor") salvarRepor(f.dataset.aluno,fd,f.dataset.dia);
+    if(f.id==="fAluno") salvarAluno(f.dataset.id||null,fd);
+  }catch(err){ toast("Erro ao salvar"); }
+});
+document.addEventListener("change",async e=>{
+  if(e.target.id==="rankRef"){ ui.rankRef=e.target.value||ui.rankRef; renderRank(); return; }
+  if(e.target.id==="fileBackup"){
+    const f=e.target.files[0]; e.target.value=""; if(!f) return;
+    try{
+      const j=JSON.parse(await f.text()); let n=0;
+      for(const c of COLS){
+        for(const it of ((j.dados||{})[c]||[])){ const {id,...resto}=it; D[c][id]=resto; n++; }
+      }
+      salvar(); render(); toast("Backup restaurado: "+n+" registros");
+    }catch(err){ toast("Arquivo de backup inválido"); }
+  }
+});
+
+/* ================= início ================= */
+render();
+setInterval(render,60000);
+if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
+</script>
+</body>
+</html>
